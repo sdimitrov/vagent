@@ -1,0 +1,1 @@
+export const jobStore: Record<string, { status: string; videoUrl?: string; error?: string }> = {}; 

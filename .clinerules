@@ -1,0 +1,25 @@
+# Cline's Project Intelligence (.clinerules)
+
+This file captures important patterns, preferences, and project-specific intelligence to help Cline work more effectively on the "vagent" project. It will be updated as new insights are discovered.
+
+## General Principles & Preferences
+*(To be populated)*
+
+## Code Patterns & Conventions
+*   **App Router Directory Structure:** The project uses `src/app/` for its Next.js App Router files (e.g., `src/app/layout.tsx`, `src/app/page.tsx`). Be cautious of any conflicting files or directories at the root-level `app/` directory, as these can cause unexpected errors. For instance, an empty `app/layout.tsx` at the root was found to conflict with `src/app/layout.tsx` and caused server errors preventing page loads. Ensure the root `app/` directory is not used for routing if `src/app/` is the intended structure.
+*(To be populated further as needed)*
+
+## Tool Usage Patterns
+*(To be populated)*
+
+## Key Implementation Paths
+*(To be populated)*
+
+## Known Challenges & Workarounds
+*(To be populated)*
+
+## User Workflow Preferences
+*(To be populated)*
+
+## Project Decision Log
+*(To be populated)*
