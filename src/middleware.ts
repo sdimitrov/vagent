@@ -1,23 +1,15 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher([
-  '/', // Landing page
-  // Add other public routes here, e.g., '/sign-in(.*)', '/sign-up(.*)'
-  // Clerk's own routes for sign-in, sign-up are typically handled automatically or might need to be listed
-  // if you have custom pages for them that should be public.
-]);
+// No need for createRouteMatcher for this simple setup
+// const isPublicRoute = createRouteMatcher([ ... ]);
 
-export default clerkMiddleware((auth, req) => {
-  if (isPublicRoute(req)) {
-    // For public routes, do nothing. Clerk will not interfere.
-    return;
-  }
-  // For all other routes, protect them
-  auth.protect();
-});
+// Protects all routes matched by config.matcher by default.
+// Clerk automatically treats its own auth routes (e.g., /sign-in) as public.
+export default clerkMiddleware();
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  // Simplest possible matcher: only run on dashboard routes
+  matcher: ['/dashboard/:path*'],
 };
 
 // Note: The previous version had "Removed config block to ensure middleware runs on ALL routes by default".

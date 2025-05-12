@@ -68,8 +68,6 @@ export default function CreateVideoPage() {
   const [isComposingVideo, setIsComposingVideo] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
   const [composeResult, setComposeResult] = useState<{ videoUrl: string } | null>(null);
-  const [composeJobId, setComposeJobId] = useState<string | null>(null);
-  const [composeStatus, setComposeStatus] = useState<string | null>(null);
 
   const [autoAlignNotice, setAutoAlignNotice] = useState(false);
 
@@ -248,33 +246,39 @@ export default function CreateVideoPage() {
     setIsComposingVideo(true);
     setComposeError(null);
     setComposeResult(null);
-    setComposeJobId(null);
-    setComposeStatus(null);
+
     try {
-      const imageUrls = generatedImages.map(img => img.imageUrl);
-      const captions = generatedScript.map(s => s.voiceover);
+      const payload = {
+        script: JSON.stringify(generatedScript), // Optional, but good for context
+        generatedContent: generatedImages.map((img, index) => ({
+          section: generatedScript[index].section,
+          visual: img.imageUrl, // This should be a direct URL to the image
+          voiceover: voiceoverUrls[index], // This should be a public URL path like /audio/file.mp3
+        })),
+      };
+
       const response = await fetch('/api/video/compose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          images: imageUrls,
-          captions,
-          voiceoverUrls,
-        }),
+        body: JSON.stringify(payload),
       });
+
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Video composition failed');
-      if (result.videoUrl) {
-        setComposeResult({ videoUrl: result.videoUrl });
-        setComposeStatus('done');
-      } else {
-        throw new Error('Unexpected response from video compose API');
+
+      if (!response.ok) {
+        throw new Error(result.error || `Video composition failed: ${response.statusText}`);
       }
+
+      // API now returns { videoPath: "/output.mp4" } directly
+      setComposeResult({ videoUrl: result.videoPath }); 
+      console.log('Video composition successful:', result.videoPath);
+
     } catch (err: any) {
-      setComposeError(err.message || 'Video composition failed');
-      setComposeStatus('error');
+      console.error('Error composing video:', err);
+      setComposeError(err.message || 'An unexpected error occurred during composition.');
+    } finally {
+      setIsComposingVideo(false);
     }
-    setIsComposingVideo(false);
   };
 
   // Automatically align images and voiceovers if counts don't match
@@ -393,16 +397,11 @@ export default function CreateVideoPage() {
                 <div className="mt-6">
                   <button
                     onClick={handleComposeVideo}
-                    disabled={isComposingVideo || composeStatus === 'pending'}
+                    disabled={isComposingVideo}
                     className="w-full sm:w-auto flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
                   >
-                    {isComposingVideo || composeStatus === 'pending' ? 'Composing Final Video...' : 'Compose Final Video'}
+                    {isComposingVideo ? 'Composing Final Video...' : 'Compose Final Video'}
                   </button>
-                  {composeStatus === 'pending' && (
-                    <div className="my-2 bg-blue-500/20 border border-blue-700 text-blue-300 px-3 py-2 rounded text-xs">
-                      <strong>Rendering video...</strong> This may take up to a few minutes. Please wait...
-                    </div>
-                  )}
                   {composeError && (
                     <div className="my-2 bg-red-500/20 border border-red-700 text-red-300 px-3 py-2 rounded text-xs">
                       <strong>Error:</strong> {composeError}
