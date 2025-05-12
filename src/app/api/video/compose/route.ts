@@ -116,6 +116,31 @@ export async function POST(request: Request) {
           // Write caption to a temp file to handle newlines robustly
           const captionFilePath = path.join(tmpDir, `caption${i}.txt`);
           fs.writeFileSync(captionFilePath, safeCaption); // Write the escaped caption
+
+          const fps = 60;
+          const zoompanDurationFrames = Math.ceil(fps * audioDuration);
+
+          // Add scale filter before zoompan as a workaround for jitter
+          const scaleFilter = {
+            filter: 'scale',
+            options: '1024:1792',
+            inputs: '0:v',
+            outputs: 'scaled'
+          };
+
+          // Define zoompan filter for Ken Burns effect
+          const zoompanFilter = {
+            filter: 'zoompan',
+            options: {
+              z: 'min(zoom+0.001,1.2)', // Zoom in slowly up to 1.2x
+              d: zoompanDurationFrames,  // Duration of the effect in frames
+              s: '1024x1792',          // Output size
+              fps: fps                 // Frame rate
+            },
+            inputs: 'scaled',  // Takes input from the preceding scale filter
+            outputs: 'zoomed' // Outputs the zoomed/panned video stream
+          };
+
           // Use complexFilter for multi-input and drawtext+scale
           const drawtextFilter = {
             filter: 'drawtext',
@@ -130,25 +155,21 @@ export async function POST(request: Request) {
               boxcolor: 'black@0.5',
               boxborderw: 10
             },
-            inputs: '0:v',
+            inputs: 'zoomed', // Takes input from zoompan filter
             outputs: 'drawn'
           };
           console.log('drawtextFilter using textfile:', drawtextFilter.options.textfile);
-          const scaleFilter = {
-            filter: 'scale',
-            options: '1024:1792',
-            inputs: 'drawn',
-            outputs: 'v'
-          };
           const command = ffmpeg()
             .addInput(imgPath)
             .loop(audioDuration)
             .addInput(audioPath)
             .complexFilter([
-              drawtextFilter,
-              scaleFilter
+              scaleFilter,   // Apply scale first
+              zoompanFilter, // Then zoompan
+              drawtextFilter // Then draw text on the zoomed video
             ])
-            .outputOptions('-map', '[v]', '-map', '1:a', '-shortest')
+            .outputOptions('-map', '[drawn]', '-map', '1:a', '-shortest') // Map the final 'drawn' stream
+            .fps(fps) // Set the output frame rate
             .videoCodec('libx264')
             .audioCodec('aac')
             .on('start', (cmdLine: string) => {
