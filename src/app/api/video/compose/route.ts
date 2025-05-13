@@ -158,17 +158,27 @@ export async function POST(request: Request) {
             inputs: 'zoomed', // Takes input from zoompan filter
             outputs: 'drawn'
           };
+
+          const finalVideoProcessing = { // <--- ADDED: For resetting PTS
+            filter: 'setpts',
+            options: 'PTS-STARTPTS',
+            inputs: 'drawn',
+            outputs: 'finalvideo'
+          };
+
           console.log('drawtextFilter using textfile:', drawtextFilter.options.textfile);
           const command = ffmpeg()
             .addInput(imgPath)
+            .inputOptions([`-r ${fps}`])
             .loop(audioDuration)
             .addInput(audioPath)
             .complexFilter([
               scaleFilter,   // Apply scale first
               zoompanFilter, // Then zoompan
-              drawtextFilter // Then draw text on the zoomed video
+              drawtextFilter, // Then draw text on the zoomed video
+              finalVideoProcessing // <--- ADDED: Reset PTS
             ])
-            .outputOptions('-map', '[drawn]', '-map', '1:a', '-shortest') // Map the final 'drawn' stream
+            .outputOptions('-map', '[finalvideo]', '-map', '1:a', '-shortest') // <--- MODIFIED: Map from finalvideo
             .fps(fps) // Set the output frame rate
             .videoCodec('libx264')
             .audioCodec('aac')
@@ -178,7 +188,9 @@ export async function POST(request: Request) {
             .on('stderr', (stderrLine: string) => {
               console.log('FFmpeg stderr:', stderrLine);
             })
-            .on('error', (err: Error) => reject(err))
+            .on('error', (err: Error) => {
+              reject(err);
+            })
             .on('end', () => resolve())
             .save(segmentPath);
         });
